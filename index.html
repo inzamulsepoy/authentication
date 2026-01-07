@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign Up — Popup Authentication</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#0b1220; --accent:#6ee7b7; --muted:#94a3b8; --danger:#fb7185;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#071029 0%, #07122a 100%); color:#e6eef8}
+    .container{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:1rem;padding:2rem}
+
+    /* Button */
+    .open-btn{background:linear-gradient(90deg,var(--accent),#60a5fa);border:0;color:#04223a;padding:0.8rem 1.1rem;border-radius:12px;font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(6,11,26,0.6)}
+
+    /* Modal */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);backdrop-filter:blur(2px);z-index:40}
+    .modal.show{display:flex}
+    .dialog{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border-radius:12px;padding:1.25rem;width:420px;max-width:92%;box-shadow:0 10px 40px rgba(2,6,23,0.7);position:relative}
+    .dialog h2{margin:0 0 0.5rem 0;font-size:1.25rem}
+    .close{position:absolute;right:12px;top:12px;border:0;background:transparent;color:var(--muted);font-size:1.4rem;cursor:pointer}
+
+    form{display:flex;flex-direction:column;gap:0.6rem}
+    label{font-size:0.85rem;color:var(--muted)}
+    input[type=text],input[type=email],input[type=password]{padding:0.6rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;font-size:1rem}
+    .row{display:flex;gap:0.6rem}
+    .muted{font-size:0.85rem;color:var(--muted)}
+
+    .error{color:var(--danger);font-size:0.82rem;margin-top:0.2rem}
+    .actions{display:flex;gap:0.6rem;justify-content:flex-end;margin-top:0.5rem}
+    .btn{padding:0.6rem 0.9rem;border-radius:8px;border:0;cursor:pointer}
+    .btn.primary{background:var(--accent);color:#022; font-weight:700}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+
+    /* password strength */
+    .pw-meter{height:6px;background:rgba(255,255,255,0.06);border-radius:6px;margin-top:0.4rem;overflow:hidden}
+    .pw-meter > i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#fb7185,#f59e0b,#34d399);transition:width .25s ease}
+
+    .success{padding:0.75rem;border-radius:8px;background:linear-gradient(90deg,#0f172a,#07122a);border:1px solid rgba(110,231,183,0.14);color:var(--accent);display:none;margin-top:0.75rem}
+    .success.show{display:block}
+
+    .sr-only{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
+
+    @media (max-width:420px){.dialog{padding:1rem}}
+  </style>
+</head>
+<body>
+
+  <main class="container">
+    <div>
+      <h1 style="margin:0 0 0.5rem 0;font-size:1.1rem">Welcome</h1>
+      <p class="muted" style="margin:0 0 1rem 0">Click below to open the sign-up popup.</p>
+      <button id="openSignup" class="open-btn">Sign Up</button>
+    </div>
+  </main>
+
+  <div class="modal" id="signupModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="signupTitle">
+    <div class="dialog" role="document">
+      <button class="close" id="closeBtn" aria-label="Close sign-up dialog">&times;</button>
+      <h2 id="signupTitle">Create an account</h2>
+
+      <form id="signupForm" novalidate>
+        <div>
+          <label for="fullname">Full name</label>
+          <input id="fullname" name="fullname" type="text" autocomplete="name" required />
+          <div class="error" id="fullnameError" aria-live="polite"></div>
+        </div>
+
+        <div>
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="email" required />
+          <div class="error" id="emailError" aria-live="polite"></div>
+        </div>
+
+        <div>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8" />
+          <div class="pw-meter" aria-hidden="true"><i id="pwBar"></i></div>
+          <div class="error" id="passwordError" aria-live="polite"></div>
+        </div>
+
+        <div>
+          <label for="confirm">Confirm password</label>
+          <input id="confirm" name="confirm" type="password" autocomplete="new-password" required />
+          <div class="error" id="confirmError" aria-live="polite"></div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn primary" id="submitBtn">Create account</button>
+        </div>
+
+        <div class="success" id="successMsg" role="status" aria-live="polite">
+          Account created successfully!
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <script>
+    // Helpers
+    const qs = s => document.querySelector(s);
+    const openBtn = qs('#openSignup');
+    const modal = qs('#signupModal');
+    const closeBtn = qs('#closeBtn');
+    const cancelBtn = qs('#cancelBtn');
+    const form = qs('#signupForm');
+    const successMsg = qs('#successMsg');
+
+    const fullnameField = qs('#fullname');
+    const emailField = qs('#email');
+    const passwordField = qs('#password');
+    const confirmField = qs('#confirm');
+
+    const fullnameError = qs('#fullnameError');
+    const emailError = qs('#emailError');
+    const passwordError = qs('#passwordError');
+    const confirmError = qs('#confirmError');
+    const pwBar = qs('#pwBar');
+
+    let lastFocused;
+
+    function openModal(){
+      lastFocused = document.activeElement;
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden','false');
+      // focus first input
+      setTimeout(()=>fullnameField.focus(),50);
+      document.addEventListener('keydown', onKeyDown);
+    }
+    function closeModal(){
+      modal.classList.remove('show');
+      modal.setAttribute('aria-hidden','true');
+      clearFormErrors();
+      successMsg.classList.remove('show');
+      document.removeEventListener('keydown', onKeyDown);
+      if(lastFocused) lastFocused.focus();
+    }
+    function onKeyDown(e){
+      if(e.key === 'Escape') closeModal();
+      // simple focus trap: keep focus inside dialog
+      if(e.key === 'Tab'){
+        const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if(!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length-1];
+        if(e.shiftKey && document.activeElement === first){ last.focus(); e.preventDefault(); }
+        else if(!e.shiftKey && document.activeElement === last){ first.focus(); e.preventDefault(); }
+      }
+    }
+
+    function clearFormErrors(){
+      [fullnameError,emailError,passwordError,confirmError].forEach(el=>el.textContent='');
+    }
+
+    function validateEmail(v){
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    }
+
+    function passwordStrength(pw){
+      let score = 0;
+      if(pw.length >= 8) score++;
+      if(/[A-Z]/.test(pw)) score++;
+      if(/[0-9]/.test(pw)) score++;
+      if(/[^A-Za-z0-9]/.test(pw)) score++;
+      return score;
+    }
+
+    function updatePwMeter(){
+      const s = passwordStrength(passwordField.value);
+      const percent = Math.min(100, (s/4)*100);
+      pwBar.style.width = percent + '%';
+    }
+
+    // live validation
+    fullnameField.addEventListener('input', ()=>{ fullnameError.textContent = fullnameField.value.trim() ? '' : 'Please enter your name.'; });
+    emailField.addEventListener('input', ()=>{ emailError.textContent = validateEmail(emailField.value) ? '' : 'Enter a valid email.'; });
+    passwordField.addEventListener('input', ()=>{ passwordError.textContent = passwordField.value.length >= 8 ? '' : 'Password must be at least 8 characters.'; updatePwMeter(); });
+    confirmField.addEventListener('input', ()=>{ confirmError.textContent = (confirmField.value === passwordField.value) ? '' : 'Passwords do not match.'; });
+
+    // clicks
+    openBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e)=>{
+      if(e.target === modal) closeModal(); // click outside
+    });
+
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      clearFormErrors();
+      let valid = true;
+      const name = fullnameField.value.trim();
+      const email = emailField.value.trim().toLowerCase();
+      const pw = passwordField.value;
+      const confirm = confirmField.value;
+
+      if(!name){fullnameError.textContent = 'Please enter your name.'; valid=false}
+      if(!validateEmail(email)){ emailError.textContent = 'Enter a valid email.'; valid=false }
+      if(pw.length < 8){ passwordError.textContent = 'Password must be at least 8 characters.'; valid=false }
+      if(pw !== confirm){ confirmError.textContent = 'Passwords do not match.'; valid=false }
+
+      if(!valid) return;
+
+      // "Register" user into localStorage (demo only)
+      try{
+        const key = 'demo_users';
+        const list = JSON.parse(localStorage.getItem(key) || '[]');
+        // simple check for existing email
+        if(list.some(u => u.email === email)){
+          emailError.textContent = 'An account with this email already exists.'; return;
+        }
+        list.push({name, email, created: new Date().toISOString()});
+        localStorage.setItem(key, JSON.stringify(list));
+        successMsg.classList.add('show');
+        // clear sensitive fields
+        passwordField.value = '';
+        confirmField.value = '';
+        updatePwMeter();
+
+        // auto-close after a brief pause
+        setTimeout(()=>{
+          closeModal();
+        }, 1200);
+      }catch(err){
+        console.error(err);
+        alert('An error occurred while saving.');
+      }
+    });
+
+    // accessibility: press Enter on open button
+    openBtn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') openModal(); });
+
+  </script>
+</body>
+</html>
